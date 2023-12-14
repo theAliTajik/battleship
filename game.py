@@ -1,6 +1,7 @@
 import pygame
 
 current_player = None
+game_state = "setup"
 
 class Grid:
     def __init__(self, size=10):
@@ -8,14 +9,30 @@ class Grid:
         self.grid = [["~" for _ in range(size)] for _ in range(size)]
         # '~' can represent water, you can use other symbols for ships, hits, and misses
 
-    def place_ship(self, coordinate:tuple):
-        self.grid[coordinate[1]][coordinate[0]] = "#"
-        
+    def place_ship(self, start: tuple, length: int, horizontal: bool) -> bool:
+        if self.is_valid_placement(start, length, horizontal):
+            x, y = start
+            for i in range(length):
+                self.grid[y][x] = "#"
+                if horizontal:
+                    x += 1
+                else:
+                    y += 1
+            return True
+        else:
+            return False
 
-    def is_valid_placement(self, start, end):
-        # Check if the placement of the ship is valid
-        # Implement checks for ship overlapping and out-of-bounds placement
-        pass
+    def is_valid_placement(self, start: tuple, length: int, horizontal: bool):
+        x, y = start
+        for i in range(length):
+            if x >= self.size or y >= self.size or self.grid[y][x] != "~":
+                print(f"placement not valid start {start}, lenght {length}, horizantol {horizontal}")
+                return False
+            if horizontal:
+                x += 1
+            else:
+                y += 1
+        return True
 
     def shoot_at(self, coord):
         if self.is_ship_hit(coord):
@@ -73,6 +90,7 @@ class Grid:
 class Player:
     def __init__(self):
         self.grid = Grid()
+        self.ships = [2,2,2,2, 3,3,3, 4,4, 5]
 
     def shoot_at(self, enemy: 'Player', coord: tuple):
         # Shoot at the specified coordinate of the enemy's grid
@@ -85,9 +103,15 @@ class Player:
         # Handle a shot at the player's grid
         return self.grid.shoot_at(coord)
 
-    def place_ship(self, coordinates: tuple):
-        # Place a ship at the specified coordinates on the player's grid
-        self.grid.place_ship(coordinates)
+    def place_ship(self, start: tuple, horizontal: bool):
+        if self.ships:
+            if self.grid.place_ship(start, self.ships[0], horizontal):
+                self.ships.pop(0)
+            
+        else:
+            global game_state
+            game_state = 'play'
+            
 
     def display_grid(self, option: str):
         # Display the player's grid based on the specified option

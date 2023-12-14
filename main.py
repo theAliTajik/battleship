@@ -5,29 +5,35 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((1200, 600))  # Customize as needed
     pygame.display.set_caption("Battleship")
-    #screen.fill((40,108,171))
+    #screen.fill((40,108,200))
+
+    ship_orientation_horizontal = True
 
     player1 = game.Player()
     player2 = game.Player()
-    player1.place_ship((1,1))
-    player1.place_ship((2,1))
-    player1.place_ship((3,1))
-    player1.place_ship((1,2))
-    player2.shoot_at(player1, (2,1))
-    player2.place_ship((2,3))
-    player1.shoot_at(player2, (2,3))
-    player1.shoot_at(player2, (3,3))
 
 
-    game.display(screen, player1.grid.get_grid_elements("all"))
+    
     game.display(screen, player2.grid.get_grid_elements("shots"), (600, 50))
 
     running = True
     while running:
+        game.display(screen, player1.grid.get_grid_elements("all"))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if game.game_state == "setup":
+                    x, y = event.pos
+                    grid_x = (x - 50) // 50
+                    grid_y = (y - 50) // 50
+                    if 0 <= grid_x < 10 and 0 <= grid_y < 10:
+                        player1.place_ship((grid_x, grid_y), ship_orientation_horizontal)        
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_v:
+                    ship_orientation_horizontal = False
+                elif event.key == pygame.K_h:
+                    ship_orientation_horizontal = True
         
         
 
