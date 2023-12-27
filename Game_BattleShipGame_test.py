@@ -16,5 +16,6 @@ my_grid.shoot_at((3,0))
 my_grid.shoot_at((7,0))
 
 my_game.draw_grid(my_grid.get_grid_elements('all'), 50, (50,50))
+my_game.draw_grid(my_grid.get_grid_elements('shots'), 50, (600,50))
 
 my_game.run_game_loop(False)

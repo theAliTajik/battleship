@@ -2,8 +2,8 @@ import pygame
 from enum import Enum
 
 class Oriantation(Enum):
-    horizantol = 1
-    vertical = 2
+    horizantol = True
+    vertical = False
 
 class Grid:
     def __init__(self, size=10):
@@ -89,13 +89,13 @@ class Grid:
 class Player:
     def __init__(self):        
         self.grid = Grid()
-        self.ships_not_placed = [2,2,2,2, 3,3,3, 4,4, 5]
+        self.ships_remaining = [2,2,2,2, 3,3,3, 4,4, 5]
+        self.ship_orientation = Oriantation.horizantol
 
 
     def play_move(self,  enemy: 'Player', game_state):
         #wait for user input
         valid_input = False
-        ship_orientation = Oriantation.horizantol
         while not valid_input:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -106,51 +106,51 @@ class Player:
                         grid_x = (x - 50) // 50
                         grid_y = (y - 50) // 50
                         if 0 <= grid_x < 10 and 0 <= grid_y < 10:
-                            if self.place_ship((grid_x, grid_y), ship_orientation):
-                                valid_input = True        
+                            if self.place_ship((grid_x, grid_y), self.ship_orientation):
+                                valid_input = True
                     elif game_state == GameState.play:
                         x, y = event.pos
                         grid_x = (x - 600) // 50
                         grid_y = (y - 50) // 50
+
                         if 0 <= grid_x < 10 and 0 <= grid_y < 10:
-                            if self.shoot_at(enemy, (grid_x, grid_y)):
-                                valid_input = True
+                            self.shoot_at(enemy, (grid_x, grid_y))
+                            valid_input = True
+                                
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_v:
-                        ship_orientation = Oriantation.vertical
+                        self.ship_orientation = Oriantation.vertical
                     elif event.key == pygame.K_h:
-                        ship_orientation = Oriantation.horizantol
+                        self.ship_orientation = Oriantation.horizantol
 
 
-    def shoot_at(self, enemy: 'Player', pos: tuple):
+    def shoot_at(self, enemy: 'Player', coord: tuple):
         # Shoot at the specified coordinate of the enemy's grid
-        if enemy.receive_shot(pos):
-            self.shots.append(('hit', pos))
-        else:
-            self.shots.append(('miss', pos))
+        enemy.receive_shot(coord)
+            
 
-    def receive_shot(self, pos: tuple):
-        for ship in self.ships:
-            for index in ship.indexes:
-                if index == pos:
-                    self.enemy_shots.append('hit', pos)
-                    return True
-            self.enemy_shots.append('miss', pos)
+
+    def receive_shot(self, coord: tuple):
+        if self.grid.shoot_at(coord):
+            self.grid.display_in_terminal()
+            return True
+        else:
             return False
 
     def place_ship(self, start: tuple, oriantation: 'Oriantation'):
-        if self.ships_not_placed:
-            #new_ship = Ships(start, oriantation, self.ships_not_placed[0])    
-            pass      
-        else:
-            global game_state
-            game_state = 'play'
+        if self.ships_remaining:
+            if self.grid.place_ship(start, self.ships_remaining[0],oriantation.value):
+                self.ships_remaining.pop(0)
+                return True
+            else:
+                return False
 
 
-    def display_grid(self, option: str):
-        # Display the player's grid based on the specified option
-        custom_grid = self.grid.get_grid_elements(option)
-        self.grid.display_in_terminal(custom_grid)
+
+    # def display_grid(self, option: str):
+    #     # Display the player's grid based on the specified option
+    #     custom_grid = self.grid.get_grid_elements(option)
+    #     self.grid.display_in_terminal(custom_grid)
 
 class GameState(Enum):
     setup = 1
@@ -175,13 +175,17 @@ class BattleShipGame:
 
     def run_game_loop(self, draw: bool):
         if draw:
-            self.render(only_update=False)
+            self.render()
         while not self.is_game_over():
+            self.play_turn()
             self.handle_events()
             self.update_game_state()
             if draw:
-                self.render(only_update=True)
+                self.render()
         pygame.quit()
+
+    def play_turn(self):
+        self.player1.play_move(self.player2,self.game_state)
 
     def handle_events(self):
         ship_orientation_horizontal = True
@@ -191,16 +195,14 @@ class BattleShipGame:
 
 
     def update_game_state(self):
-        #TODO: game state updating logic
-        pass
+        if not self.player1.ships_remaining:
+            self.game_state = GameState.play
 
-    def render(self, only_update):
-        if not only_update:
-            self.draw_grid(self.player1.grid.get_grid_elements("all"), 50, (50,50))
-            self.draw_grid(self.player2.grid.get_grid_elements("shots"), 50, (600, 50))
-        else:
-            #only update the changed parts
-            pass
+
+    def render(self):
+        self.draw_grid(self.player1.grid.get_grid_elements("all"), 50, (50,50))
+        self.draw_grid(self.player2.grid.get_grid_elements("shots"), 50, (600, 50))
+        
 
     def draw_grid(self, grid, cell_size, start_pos):
         for row_idx, row in enumerate(grid):
