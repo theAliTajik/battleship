@@ -132,7 +132,6 @@ class Player:
 
     def receive_shot(self, coord: tuple):
         if self.grid.shoot_at(coord):
-            self.grid.display_in_terminal()
             return True
         else:
             return False
@@ -152,10 +151,32 @@ class Player:
     #     custom_grid = self.grid.get_grid_elements(option)
     #     self.grid.display_in_terminal(custom_grid)
 
+class BotPlayer(Player):
+    def __init__(self):
+        super().__init__()
+
+    def play_move(self, enemy: Player, game_state):
+        valid_input = False
+        while not valid_input:
+            x = int(input('enter x:'))
+            y = int(input('enter y:'))
+
+            if game_state == GameState.setup:
+                if 0 <= x < 10 and 0 <= y < 10:
+                    if self.place_ship((x, y), self.ship_orientation):
+                        valid_input = True
+            elif game_state == GameState.play:
+                if 0 <= x < 10 and 0 <= y < 10:
+                    self.shoot_at(enemy, (x, y))
+                    valid_input = True
+
+
 class GameState(Enum):
     setup = 1
     play = 2
     game_over = 3
+
+
 
 class Turn(Enum):
     player1 = 1
@@ -166,7 +187,7 @@ class BattleShipGame:
         self.turn = Turn.player1
         self.game_state = GameState.setup
         self.player1 = Player()
-        self.player2 = Player()
+        self.player2 = BotPlayer()
 
         pygame.init()
         self.screen = pygame.display.set_mode((1200, 600))  # Customize as needed
@@ -185,7 +206,19 @@ class BattleShipGame:
         pygame.quit()
 
     def play_turn(self):
-        self.player1.play_move(self.player2,self.game_state)
+        if self.game_state == GameState.setup:
+            if self.turn == Turn.player1 :
+                self.player1.play_move(self.player2,self.game_state)
+            elif self.turn == Turn.player2:
+                self.player2.play_move(self.player1,self.game_state)
+
+        elif self.game_state == GameState.play:
+            if self.turn == Turn.player1:
+                self.player1.play_move(self.player2,self.game_state)
+                self.turn = Turn.player2
+            else:
+                self.player2.play_move(self.player1,self.game_state)
+                self.turn = Turn.player1
 
     def handle_events(self):
         ship_orientation_horizontal = True
@@ -195,8 +228,13 @@ class BattleShipGame:
 
 
     def update_game_state(self):
-        if not self.player1.ships_remaining:
-            self.game_state = GameState.play
+        if self.game_state == GameState.setup:
+            if self.turn == Turn.player1 and not self.player1.ships_remaining:
+                self.turn = Turn.player2
+            elif self.turn == Turn.player2 and not self.player2.ships_remaining:
+                self.game_state = GameState.play
+
+        
 
 
     def render(self):
