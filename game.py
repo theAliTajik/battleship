@@ -1,146 +1,228 @@
 import pygame
+from enum import Enum
 
-current_player = None
-game_state = "setup"
+class Oriantation(Enum):
+    horizantol = 1
+    vertical = 2
 
 class Grid:
     def __init__(self, size=10):
         self.size = size
-        self.grid = [["~" for _ in range(size)] for _ in range(size)]
+        self.grid = [[0 for _ in range(size)] for _ in range(size)]
         # '~' can represent water, you can use other symbols for ships, hits, and misses
 
-    def place_ship(self, start: tuple, length: int, horizontal: bool) -> bool:
-        if self.is_valid_placement(start, length, horizontal):
-            x, y = start
-            for i in range(length):
-                self.grid[y][x] = "#"
-                if horizontal:
-                    x += 1
-                else:
-                    y += 1
-            return True
-        else:
-            return False
-
-    def is_valid_placement(self, start: tuple, length: int, horizontal: bool):
-        x, y = start
+    def place_ship(self, start: tuple, length: int, horizantol: bool) -> bool:
+        x, y = start    
         for i in range(length):
-            if x >= self.size or y >= self.size or self.grid[y][x] != "~":
-                print(f"placement not valid start {start}, lenght {length}, horizantol {horizontal}")
-                return False
-            if horizontal:
+            if self.ship_at((x,y)):
+               return False
+            if horizantol == True:
                 x += 1
             else:
                 y += 1
-        return True
-
-    def shoot_at(self, coord):
-        if self.is_ship_hit(coord):
-            self.grid[coord[1]][coord[0]] = "X"
-            return True
-        else:
-            self.grid[coord[1]][coord[0]] = "O"
-            return False
-        # Record a shot at the given coordinate
-        # Update the grid based on whether it's a hit or miss
         
+        x, y = start    
+        for i in range(length):
+            self.grid[y][x] = 1
+            if horizantol == True:
+                x += 1
+            else:
+                y += 1
 
-    def is_ship_hit(self, coord) -> bool:
-        if self.grid[coord[1]][coord[0]] == "#":
+        return True
+                
+        
+    def shoot_at(self, coord: tuple) -> bool:
+        if self.is_valid_coord(coord):
+            if self.ship_at(coord):
+                self.grid[coord[1]][coord[0]] = 2
+                return True
+            else:
+                self.grid[coord[1]][coord[0]] = 3
+                return False
+        else:
+            return False
+
+    def ship_at(self, coord: tuple) -> bool:
+        x, y = coord
+        if self.is_valid_coord(coord):
+            if self.grid[y][x] == 1:
+                return True
+            else:
+                return False
+        else:
+            return True
+        
+    def is_valid_coord(self, coord: tuple) -> bool:
+        x, y = coord
+        if 0 <= x < self.size and 0 <= y < self.size:
             return True
         else:
             return False
-        # Determine if a ship is hit at the given coordinate
-
-    def display(self, grid):
+        
+    def display_in_terminal(self):
         # Print the grid to the console - for testing
+        grid = self.get_grid_elements('all')
         for row in grid:
-            print(" ".join(row))
-        print()
-    
+            print(row)
+
     def get_grid_elements(self, option):
-        """
-        Return specific elements of the grid based on the option:
-        - "ships": Only the ships, turning hits into ships and misses into water
-        - "shots": Only the hits and misses, hiding the ships
-        - "all": Both ships and hits and misses
-        """
         if option == "all":
             return self.grid
 
-        result = [["~" for _ in range(self.size)] for _ in range(self.size)]
+        result = [[0 for _ in range(self.size)] for _ in range(self.size)]
         for i in range(self.size):
             for j in range(self.size):
                 if option == "ships":
-                    if self.grid[i][j] in ["#", "X"]:  # Ships and hits shown as ships
-                        result[i][j] = "#"
-                    # Misses and water remain as water
+                    if self.grid[i][j] in [1, 2]:  # Ships and hits shown as ships
+                        result[i][j] = 1
+                        # Misses and water remain as water
                 elif option == "shots":
-                    if self.grid[i][j] in ["X", "O"]:  # Only showing hits and misses
+                    if self.grid[i][j] in [2, 3]:  # Only showing hits and misses
                         result[i][j] = self.grid[i][j]
-                    # Ships and water remain hidden
+                        # Ships and water remain hidden
 
         return result
-    
 
 
-    # You can add more methods as needed, such as checking for game over conditions,
-    # or methods to support AI decision-making
 
 class Player:
-    def __init__(self):
+    def __init__(self):        
         self.grid = Grid()
-        self.ships = [2,2,2,2, 3,3,3, 4,4, 5]
+        self.ships_not_placed = [2,2,2,2, 3,3,3, 4,4, 5]
 
-    def shoot_at(self, enemy: 'Player', coord: tuple):
+
+    def play_move(self,  enemy: 'Player', game_state):
+        #wait for user input
+        valid_input = False
+        ship_orientation = Oriantation.horizantol
+        while not valid_input:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()                    
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if game_state == GameState.setup:
+                        x, y = event.pos
+                        grid_x = (x - 50) // 50
+                        grid_y = (y - 50) // 50
+                        if 0 <= grid_x < 10 and 0 <= grid_y < 10:
+                            if self.place_ship((grid_x, grid_y), ship_orientation):
+                                valid_input = True        
+                    elif game_state == GameState.play:
+                        x, y = event.pos
+                        grid_x = (x - 600) // 50
+                        grid_y = (y - 50) // 50
+                        if 0 <= grid_x < 10 and 0 <= grid_y < 10:
+                            if self.shoot_at(enemy, (grid_x, grid_y)):
+                                valid_input = True
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_v:
+                        ship_orientation = Oriantation.vertical
+                    elif event.key == pygame.K_h:
+                        ship_orientation = Oriantation.horizantol
+
+
+    def shoot_at(self, enemy: 'Player', pos: tuple):
         # Shoot at the specified coordinate of the enemy's grid
-        if enemy.receive_shot(coord):
-            print("Hit!")
+        if enemy.receive_shot(pos):
+            self.shots.append(('hit', pos))
         else:
-            print("miss")
+            self.shots.append(('miss', pos))
 
-    def receive_shot(self, coord: tuple):
-        # Handle a shot at the player's grid
-        return self.grid.shoot_at(coord)
+    def receive_shot(self, pos: tuple):
+        for ship in self.ships:
+            for index in ship.indexes:
+                if index == pos:
+                    self.enemy_shots.append('hit', pos)
+                    return True
+            self.enemy_shots.append('miss', pos)
+            return False
 
-    def place_ship(self, start: tuple, horizontal: bool):
-        if self.ships:
-            if self.grid.place_ship(start, self.ships[0], horizontal):
-                self.ships.pop(0)
-            
+    def place_ship(self, start: tuple, oriantation: 'Oriantation'):
+        if self.ships_not_placed:
+            #new_ship = Ships(start, oriantation, self.ships_not_placed[0])    
+            pass      
         else:
             global game_state
             game_state = 'play'
-            
+
 
     def display_grid(self, option: str):
         # Display the player's grid based on the specified option
         custom_grid = self.grid.get_grid_elements(option)
-        self.grid.display(custom_grid)
+        self.grid.display_in_terminal(custom_grid)
 
-def update():
-    # Update game state
-    pass
+class GameState(Enum):
+    setup = 1
+    play = 2
+    game_over = 3
 
-def draw_grid(screen, grid, cell_size, start_pos):
-    for row in range(len(grid)):
-        for col in range(len(grid[row])):
-            rect = pygame.Rect(start_pos[0] + col * cell_size, start_pos[1] + row * cell_size, cell_size, cell_size)
-            pygame.draw.rect(screen, (255, 255, 255), rect, 1)  # Draw cell border
-            cell = grid[row][col]
-            if cell == "#":  # Ship
-                pygame.draw.rect(screen, (128, 128, 128), rect)
-            elif cell == "X":  # Hit
-                pygame.draw.rect(screen, (128, 128, 128), rect)
-                pygame.draw.line(screen, (255, 0, 0), (rect.left, rect.top), (rect.right, rect.bottom), 3)
-                pygame.draw.line(screen, (255, 0, 0), (rect.left, rect.bottom), (rect.right, rect.top), 3)
-            elif cell == "O":  # Miss
-                pygame.draw.circle(screen, (0, 0, 255), rect.center, int(cell_size / 4))
+class Turn(Enum):
+    player1 = 1
+    player2 = 2
 
-def display(screen, grid,  start_pos=(50,50)):
-    cell_size = 50
-    
-    draw_grid(screen, grid, cell_size, start_pos)
+class BattleShipGame:
+    def __init__(self) -> None:
+        self.turn = Turn.player1
+        self.game_state = GameState.setup
+        self.player1 = Player()
+        self.player2 = Player()
 
-    pygame.display.flip()
+        pygame.init()
+        self.screen = pygame.display.set_mode((1200, 600))  # Customize as needed
+        pygame.display.set_caption("Battleship")
+        #screen.fill((40,108,200))
+
+    def run_game_loop(self, draw: bool):
+        if draw:
+            self.render(only_update=False)
+        while not self.is_game_over():
+            self.handle_events()
+            self.update_game_state()
+            if draw:
+                self.render(only_update=True)
+        pygame.quit()
+
+    def handle_events(self):
+        ship_orientation_horizontal = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_state = GameState.game_over
+
+
+    def update_game_state(self):
+        #TODO: game state updating logic
+        pass
+
+    def render(self, only_update):
+        if not only_update:
+            self.draw_grid(self.player1.grid.get_grid_elements("all"), 50, (50,50))
+            self.draw_grid(self.player2.grid.get_grid_elements("shots"), 50, (600, 50))
+        else:
+            #only update the changed parts
+            pass
+
+    def draw_grid(self, grid, cell_size, start_pos):
+        for row_idx, row in enumerate(grid):
+            for col_idx, cell in enumerate(row):
+                rect = pygame.Rect(start_pos[0] + col_idx * cell_size, start_pos[1] + row_idx * cell_size, cell_size, cell_size)
+                pygame.draw.rect(self.screen, (255, 255, 255), rect, 1)  # Draw cell border
+                
+                if cell == 1:  # Ship
+                    pygame.draw.rect(self.screen, (128, 128, 128), rect)
+                elif cell == 2:  # Hit
+                    pygame.draw.rect(self.screen, (128, 128, 128), rect)
+                    pygame.draw.line(self.screen, (255, 0, 0), (rect.left, rect.top), (rect.right, rect.bottom), 3)
+                    pygame.draw.line(self.screen, (255, 0, 0), (rect.left, rect.bottom), (rect.right, rect.top), 3)
+                elif cell == 3:  # Miss
+                    pygame.draw.circle(self.screen, (0, 0, 255), rect.center, int(cell_size / 4))
+
+            pygame.display.flip()
+
+
+    def is_game_over(self) -> bool:
+        if self.game_state == GameState.game_over:
+            return True
+        else:
+            return False
 
