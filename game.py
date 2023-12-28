@@ -1,5 +1,6 @@
 import pygame
 from enum import Enum
+import random as rd
 
 class Oriantation(Enum):
     horizantol = True
@@ -158,8 +159,9 @@ class BotPlayer(Player):
     def play_move(self, enemy: Player, game_state):
         valid_input = False
         while not valid_input:
-            x = int(input('enter x:'))
-            y = int(input('enter y:'))
+            x = rd.randint(0,9)
+            y = rd.randint(0,9)
+            
 
             if game_state == GameState.setup:
                 if 0 <= x < 10 and 0 <= y < 10:
