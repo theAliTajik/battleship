@@ -38,11 +38,11 @@ class Grid:
             if self.ship_at(coord):
                 self.grid[coord[1]][coord[0]] = 2
                 return True
-            else:
+            elif self.grid[coord[1]][coord[0]] == 0:
                 self.grid[coord[1]][coord[0]] = 3
-                return False
-        else:
-            return False
+                return True
+        
+        return False
 
     def ship_at(self, coord: tuple) -> bool:
         x, y = coord
@@ -115,8 +115,8 @@ class Player:
                         grid_y = (y - 50) // 50
 
                         if 0 <= grid_x < 10 and 0 <= grid_y < 10:
-                            self.shoot_at(enemy, (grid_x, grid_y))
-                            valid_input = True
+                            if self.shoot_at(enemy, (grid_x, grid_y)):
+                                valid_input = True
                                 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_v:
@@ -127,7 +127,7 @@ class Player:
 
     def shoot_at(self, enemy: 'Player', coord: tuple):
         # Shoot at the specified coordinate of the enemy's grid
-        enemy.receive_shot(coord)
+        return enemy.receive_shot(coord)
             
 
 
