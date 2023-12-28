@@ -144,6 +144,14 @@ class Player:
                 return True
             else:
                 return False
+            
+    def is_lost(self) -> bool:
+        for row in self.grid.get_grid_elements('all'):
+            for cell in row:
+                if cell == 1:
+                    return False
+        
+        return True
 
 
 
@@ -181,8 +189,8 @@ class GameState(Enum):
 
 
 class Turn(Enum):
-    player1 = 1
-    player2 = 2
+    player1 = 'player 1'
+    player2 = 'player 2'
 
 class BattleShipGame:
     def __init__(self) -> None:
@@ -203,6 +211,7 @@ class BattleShipGame:
             self.play_turn()
             self.handle_events()
             self.update_game_state()
+            self.is_game_over()
             if draw:
                 self.render()
         pygame.quit()
@@ -235,6 +244,10 @@ class BattleShipGame:
                 self.turn = Turn.player2
             elif self.turn == Turn.player2 and not self.player2.ships_remaining:
                 self.game_state = GameState.play
+        elif self.game_state == GameState.play:
+            if self.player1.is_lost() or self.player2.is_lost():
+                self.game_state = GameState.game_over
+            
 
         
 
@@ -262,9 +275,11 @@ class BattleShipGame:
             pygame.display.flip()
 
 
-    def is_game_over(self) -> bool:
+    def is_game_over(self):
         if self.game_state == GameState.game_over:
+            print(f'game over, {self.turn.value} lost')
             return True
         else:
             return False
+            
 
