@@ -10,7 +10,6 @@ class Grid:
     def __init__(self, size=10):
         self.size = size
         self.grid = [[0 for _ in range(size)] for _ in range(size)]
-        # '~' can represent water, you can use other symbols for ships, hits, and misses
 
     def place_ship(self, start: tuple, length: int, horizantol: bool) -> bool:
         x, y = start    
@@ -52,7 +51,7 @@ class Grid:
             else:
                 return False
         else:
-            return True
+            return False
         
     def is_valid_coord(self, coord: tuple) -> bool:
         x, y = coord
@@ -62,7 +61,6 @@ class Grid:
             return False
         
     def display_in_terminal(self):
-        # Print the grid to the console - for testing
         grid = self.get_grid_elements('all')
         for row in grid:
             print(row)
@@ -75,13 +73,11 @@ class Grid:
         for i in range(self.size):
             for j in range(self.size):
                 if option == "ships":
-                    if self.grid[i][j] in [1, 2]:  # Ships and hits shown as ships
+                    if self.grid[i][j] in [1, 2]:  
                         result[i][j] = 1
-                        # Misses and water remain as water
                 elif option == "shots":
-                    if self.grid[i][j] in [2, 3]:  # Only showing hits and misses
+                    if self.grid[i][j] in [2, 3]:  
                         result[i][j] = self.grid[i][j]
-                        # Ships and water remain hidden
 
         return result
 
@@ -92,10 +88,10 @@ class Player:
         self.grid = Grid()
         self.ships_remaining = [2,2,2,2, 3,3,3, 4,4, 5]
         self.ship_orientation = Oriantation.horizantol
+        
 
 
     def play_move(self,  enemy: 'Player', game_state):
-        #wait for user input
         valid_input = False
         while not valid_input:
             for event in pygame.event.get():
@@ -126,16 +122,14 @@ class Player:
 
 
     def shoot_at(self, enemy: 'Player', coord: tuple):
-        # Shoot at the specified coordinate of the enemy's grid
         return enemy.receive_shot(coord)
             
 
 
     def receive_shot(self, coord: tuple):
-        if self.grid.shoot_at(coord):
-            return True
-        else:
-            return False
+        return self.grid.shoot_at(coord)
+         
+         
 
     def place_ship(self, start: tuple, oriantation: 'Oriantation'):
         if self.ships_remaining:
@@ -155,14 +149,11 @@ class Player:
 
 
 
-    # def display_grid(self, option: str):
-    #     # Display the player's grid based on the specified option
-    #     custom_grid = self.grid.get_grid_elements(option)
-    #     self.grid.display_in_terminal(custom_grid)
 
 class BotPlayer(Player):
     def __init__(self):
         super().__init__()
+        self.shots_made = set()
 
     def play_move(self, enemy: Player, game_state):
         valid_input = False
@@ -176,9 +167,10 @@ class BotPlayer(Player):
                     if self.place_ship((x, y), self.ship_orientation):
                         valid_input = True
             elif game_state == GameState.play:
-                if 0 <= x < 10 and 0 <= y < 10:
-                    self.shoot_at(enemy, (x, y))
-                    valid_input = True
+                if (x,y) not in self.shots_made and 0 <= x < 10 and 0 <= y < 10:
+                    if self.shoot_at(enemy, (x, y)):
+                        self.shots_made.add((x,y))
+                        valid_input = True
 
 
 class GameState(Enum):
@@ -200,7 +192,8 @@ class BattleShipGame:
         self.player2 = BotPlayer()
 
         pygame.init()
-        self.screen = pygame.display.set_mode((1200, 600))  # Customize as needed
+        self.resolution = (1200,600)
+        self.screen = pygame.display.set_mode(self.resolution)  
         pygame.display.set_caption("Battleship")
         #screen.fill((40,108,200))
 
@@ -214,7 +207,10 @@ class BattleShipGame:
             self.is_game_over()
             if draw:
                 self.render()
-        pygame.quit()
+
+        self.display_winner(self.turn)
+        while True:
+            self.handle_events()
 
     def play_turn(self):
         if self.game_state == GameState.setup:
@@ -232,11 +228,9 @@ class BattleShipGame:
                 self.turn = Turn.player1
 
     def handle_events(self):
-        ship_orientation_horizontal = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.game_state = GameState.game_over
-
+                pygame.quit()
 
     def update_game_state(self):
         if self.game_state == GameState.setup:
@@ -248,20 +242,15 @@ class BattleShipGame:
             if self.player1.is_lost() or self.player2.is_lost():
                 self.game_state = GameState.game_over
             
-
-        
-
-
     def render(self):
         self.draw_grid(self.player1.grid.get_grid_elements("all"), 50, (50,50))
         self.draw_grid(self.player2.grid.get_grid_elements("shots"), 50, (600, 50))
         
-
     def draw_grid(self, grid, cell_size, start_pos):
         for row_idx, row in enumerate(grid):
             for col_idx, cell in enumerate(row):
                 rect = pygame.Rect(start_pos[0] + col_idx * cell_size, start_pos[1] + row_idx * cell_size, cell_size, cell_size)
-                pygame.draw.rect(self.screen, (255, 255, 255), rect, 1)  # Draw cell border
+                pygame.draw.rect(self.screen, (255, 255, 255), rect, 1)  
                 
                 if cell == 1:  # Ship
                     pygame.draw.rect(self.screen, (128, 128, 128), rect)
@@ -274,12 +263,34 @@ class BattleShipGame:
 
             pygame.display.flip()
 
+    def display_winner(self,winner: 'Turn'):
+        font = pygame.font.SysFont(None,55)
+        if winner == Turn.player1:
+            text = font.render("player 1 wins!", True, (255,255,255))
+        elif winner == Turn.player2:
+            text = font.render("player 1 wins!", True, (255,255,255))
+
+        text_rect = text.get_rect()
+        text_rect.center = (self.resolution[0]//2, self.resolution[1]//2)
+
+        background_color = (0, 128, 0) 
+        padding = 10 
+        background_rect = text_rect.inflate(padding * 2, padding * 2)
+        pygame.draw.rect(self.screen, background_color, background_rect)
+        self.screen.blit(text, text_rect)
+        pygame.display.flip()
 
     def is_game_over(self):
         if self.game_state == GameState.game_over:
-            print(f'game over, {self.turn.value} lost')
             return True
         else:
             return False
             
 
+
+def main():
+    game = BattleShipGame()
+    game.run_game_loop(True)
+
+if __name__ == "__main__":
+    main()
